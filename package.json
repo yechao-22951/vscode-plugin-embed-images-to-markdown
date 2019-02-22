@@ -29,8 +29,8 @@
     "keybindings": [
       {
         "command": "extension.packMarkdownImages",
-        "key": "ctrl+m+p",
-        "mac": "cmd_m+p",
+        "key": "ctrl+alt+o",
+        "mac": "cmd+;",
         "when": "editorTextFocus"
       }
     ],

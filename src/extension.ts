@@ -16,6 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
+	/*   */
 	console.log('Congratulations, your extension "md-pack" is now active!');
 
 	let mdExtCheck: RegExp = new RegExp("\.md$");
@@ -42,13 +43,29 @@ export function activate(context: vscode.ExtensionContext) {
 		//return ["",text];
 	}
 
-	function generateNewDoc( content : string, replacements: any ) {
-		content.replace( mdImageAnchor, ( substring:string, alt:string, path:string, offset:number ) : string => {
-			let replacement = replacements[offset.toString()];
-			util.format( "![%s][%s]", replacement.imageHash );
-			return "";
-		} );
+	class FoldEmbededImage implements vscode.FoldingRangeProvider {
+		static embededImagePattern = /\[embeded-image-\w+\]:\sdata:image\//g;
+		provideFoldingRanges(
+			document: vscode.TextDocument,
+			context: vscode.FoldingContext, 
+			token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]>
+		{
+			let results:vscode.FoldingRange[] = []; 
+			const content = document.getText();
+			for(let result:any; result = FoldEmbededImage.embededImagePattern.exec(content); ) {
+				const offset = result.index;
+				const lineNum = document.positionAt(offset).line
+				let r = new vscode.FoldingRange(lineNum,lineNum+2);
+				results.push(r);
+			}
+			return results;
+		}
 	}
+
+	let f1 = vscode.languages.registerFoldingRangeProvider({pattern:"**/*.md"}, new FoldEmbededImage);
+	context.subscriptions.push(f1);
+
+
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
@@ -60,7 +77,7 @@ export function activate(context: vscode.ExtensionContext) {
 		const fileName: string = editor.document.fileName;
 		
 		if (!mdExtCheck.test(fileName)) {
-			vscode.window.showInformationMessage(editor.document.fileName + ": Not a Markdown file.");
+			vscode.window.showInformationMessage(fileName + ": Not a Markdown file.");
 			return;
 		}
 		const homePath = path.dirname(fileName);
@@ -70,7 +87,6 @@ export function activate(context: vscode.ExtensionContext) {
 		let replaceMap: { [idx:number]: any} = {};					// offset -> md5
 		let fileCache: {[idx:string]:boolean} = {};
 		for(let result:any; result = mdImageAnchor.exec(content); ) {
-			console.log(result);
 			const offset = result.index;
 			const filePath = resolveImagePath(homePath, result[2]);
 			if (filePath in fileCache ) {
@@ -83,10 +99,14 @@ export function activate(context: vscode.ExtensionContext) {
 				replaceMap[offset] = imageMD5;
 			} 
 		}
+		if( !Object.keys(imageStore).length ) {
+			vscode.window.showInformationMessage(fileName + ": No image to carry");
+			return;
+		}
 		content = content.replace( mdImageAnchor, ( substring:string, alt:string, path:string, offset:number ) : string => {
 			let md5:string = replaceMap[offset];
 			if( !md5 ) return substring; // not replace
-			return util.format( "![%s][%s]", alt, md5 );
+			return util.format( "![%s][embeded-image-%s]", alt, md5 );
 		} );
 
 		let packedFileName = fileName.replace(/.md$/, ".idp.md");
@@ -95,19 +115,19 @@ export function activate(context: vscode.ExtensionContext) {
 			autoClose : true
 		})
 		if( !output ) {
-			vscode.window.showErrorMessage("Create " + packedFileName + " failed." );
+			vscode.window.showErrorMessage(fileName +": Create " + packedFileName + " failed." );
 			return ;
 		}
 		await output.write( content );
 		await output.write( "\r\n".repeat(10) );
 		for( let md5 in imageStore) {
-			let text = util.format("\r\n[%s]:%s\r\n", md5, imageStore[md5]);
+			let text = util.format("\r\n[embeded-image-%s]:\r\n%s\r\n", md5, imageStore[md5]);
 			await output.write( text );
 		}
 		output.close();
 		let doc = await vscode.workspace.openTextDocument(packedFileName);
 		vscode.window.showTextDocument(doc);
-		vscode.window.showInformationMessage(packedFileName + " maked!");
+		vscode.window.showInformationMessage(fileName +": " + packedFileName + " maked!");
 		return;
 	});
 
