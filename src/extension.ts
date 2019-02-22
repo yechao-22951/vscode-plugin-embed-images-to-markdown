@@ -55,7 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
 			for(let result:any; result = FoldEmbededImage.embededImagePattern.exec(content); ) {
 				const offset = result.index;
 				const lineNum = document.positionAt(offset).line
-				let r = new vscode.FoldingRange(lineNum,lineNum+2);
+				let r = new vscode.FoldingRange(lineNum,lineNum+1);
 				results.push(r);
 			}
 			return results;
