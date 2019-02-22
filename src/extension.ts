@@ -35,7 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
 		if (w > 600) {
 			image = await image.resize(600, 600 * h / w);
 		}
-		let text = await image.quality(60).getBase64Async(jimp.MIME_JPEG);
+		let text = await image.quality(80).getBase64Async(jimp.MIME_JPEG);
 		console.log(text);
 		let md5 = crypto.createHash('md5');
 		return [ md5.update(text).digest("hex"), text ];
