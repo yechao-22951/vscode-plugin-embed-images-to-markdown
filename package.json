@@ -1,7 +1,8 @@
 {
-  "name": "vscode-plugin-markdown-image-pack",
-  "displayName": "Markdown Images File Pack",
-  "description": "",
+  "name": "vscode-plugin-embed-images-to-markdown",
+  "displayName": "Embed Images To Markdown",
+  "description": "Embed referenced local image files to markdown file and fold all the image-data-uri ranges.",
+  "publisher": "YeChao",
   "keywords": [
     "vscode",
     "plugin",
@@ -16,21 +17,21 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:extension.packMarkdownImages"
+    "onCommand:extension.embedImageToMarkdown"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "extension.packMarkdownImages",
-        "title": "Pack Markdown Images"
+        "command": "extension.embedImageToMarkdown",
+        "title": "Embed Images To Markdown"
       }
     ],
     "keybindings": [
       {
-        "command": "extension.packMarkdownImages",
-        "key": "ctrl+alt+o",
-        "mac": "cmd+;",
+        "command": "extension.embedImageToMarkdown",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e;",
         "when": "editorTextFocus"
       }
     ],
@@ -38,8 +39,8 @@
       "editor/context": [
         {
           "when": "editorFocus",
-          "command": "extension.packMarkdownImages",
-          "group": "navigation"
+          "command": "extension.embedImageToMarkdown",
+          "group": "make"
         }
       ]
     }

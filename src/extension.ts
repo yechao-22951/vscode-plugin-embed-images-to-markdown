@@ -1,27 +1,16 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-//import * as uuid from 'uuid';
 import * as crypto from 'crypto';
 import * as util from 'util';
-import { FORMERR } from 'dns';
+import * as jimp from 'jimp';
 
-const jimp = require('jimp');
-
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	/*   */
-	console.log('Congratulations, your extension "md-pack" is now active!');
-
-	let mdExtCheck: RegExp = new RegExp("\.md$");
-	let idpMdExtCheck: RegExp = new RegExp("\.idp\.md$");
+	const mdExtCheck: RegExp = new RegExp("\.md$");
+	const idpMdExtCheck: RegExp = new RegExp("\.idp\.md$");
 	const mdImageAnchor: RegExp = /\!\[(.*)\]\((.+)\)/g;
+	const embededImagePattern = /\[embeded-image-\w+\]:\sdata:image\//g;
 
 	function resolveImagePath(home: string, filePath: string) {
 		return path.isAbsolute(filePath)
@@ -37,59 +26,46 @@ export function activate(context: vscode.ExtensionContext) {
 			image = await image.resize(600, 600 * h / w);
 		}
 		let text = await image.quality(80).getBase64Async(jimp.MIME_JPEG);
-		console.log(text);
 		let md5 = crypto.createHash('md5');
-		return [ md5.update(text).digest("hex"), text ];
-		//return ["",text];
+		return [md5.update(text).digest("hex"), text];
 	}
 
 	class FoldEmbededImage implements vscode.FoldingRangeProvider {
-		static embededImagePattern = /\[embeded-image-\w+\]:\sdata:image\//g;
 		provideFoldingRanges(
 			document: vscode.TextDocument,
-			context: vscode.FoldingContext, 
-			token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]>
-		{
-			let results:vscode.FoldingRange[] = []; 
+			context: vscode.FoldingContext,
+			token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]> {
+			let results: vscode.FoldingRange[] = [];
 			const content = document.getText();
-			for(let result:any; result = FoldEmbededImage.embededImagePattern.exec(content); ) {
+			for (let result: any; result = embededImagePattern.exec(content);) {
 				const offset = result.index;
 				const lineNum = document.positionAt(offset).line
-				let r = new vscode.FoldingRange(lineNum,lineNum+1);
-				results.push(r);
+				results.push(new vscode.FoldingRange(lineNum, lineNum + 1));
 			}
 			return results;
 		}
 	}
 
-	let f1 = vscode.languages.registerFoldingRangeProvider({pattern:"**/*.md"}, new FoldEmbededImage);
-	context.subscriptions.push(f1);
+	let disposable = vscode.languages.registerFoldingRangeProvider({ pattern: "**/*.md" }, new FoldEmbededImage);
+	context.subscriptions.push(disposable);
 
-
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('extension.packMarkdownImages', async () => {
-		// The code you place here will be executed every time your command is executed
+	disposable = vscode.commands.registerCommand('extension.embedImageToMarkdown', async () => {
 		let editor = vscode.window.activeTextEditor;
 		if (!editor) return;
 		const fileName: string = editor.document.fileName;
-		
 		if (!mdExtCheck.test(fileName)) {
-			vscode.window.showInformationMessage(fileName + ": Not a Markdown file.");
+			vscode.window.showInformationMessage("Not a Markdown file.");
 			return;
 		}
 		const homePath = path.dirname(fileName);
 		let content: string = editor.document.getText();
-		//const mdImageAnchor: RegExp = /\!\[(.*)\]\((.+)\)/g
 		let imageStore: { [idx: string]: string } = {};			// md5 -> image
-		let replaceMap: { [idx:number]: any} = {};					// offset -> md5
-		let fileCache: {[idx:string]:boolean} = {};
-		for(let result:any; result = mdImageAnchor.exec(content); ) {
+		let replaceMap: { [idx: number]: any } = {};			// offset -> md5
+		let fileCache: { [idx: string]: string } = {};
+		for (let result: any; result = mdImageAnchor.exec(content);) {
 			const offset = result.index;
 			const filePath = resolveImagePath(homePath, result[2]);
-			if (filePath in fileCache ) {
+			if (filePath in fileCache) {
 				replaceMap[result.index] = fileCache[filePath];
 			}
 			else {
@@ -97,37 +73,38 @@ export function activate(context: vscode.ExtensionContext) {
 				imageStore[imageMD5] = imageText;
 				fileCache[filePath] = imageMD5;
 				replaceMap[offset] = imageMD5;
-			} 
+			}
 		}
-		if( !Object.keys(imageStore).length ) {
-			vscode.window.showInformationMessage(fileName + ": No image to carry");
+		if (!Object.keys(imageStore).length) {
+			vscode.window.showWarningMessage("No image to embed.");
 			return;
 		}
-		content = content.replace( mdImageAnchor, ( substring:string, alt:string, path:string, offset:number ) : string => {
-			let md5:string = replaceMap[offset];
-			if( !md5 ) return substring; // not replace
-			return util.format( "![%s][embeded-image-%s]", alt, md5 );
-		} );
+		content = content.replace(mdImageAnchor, (substring: string, alt: string, path: string, offset: number): string => {
+			let md5: string = replaceMap[offset];
+			if (!md5) return substring;
+			return util.format("![%s][embeded-image-%s]", alt, md5);
+		});
 
 		let packedFileName = fileName.replace(/.md$/, ".idp.md");
 		let output = fs.createWriteStream(packedFileName, {
-			encoding : "utf8",
-			autoClose : true
+			flags: 'w',
+			encoding: "utf8",
+			autoClose: true
 		})
-		if( !output ) {
-			vscode.window.showErrorMessage(fileName +": Create " + packedFileName + " failed." );
-			return ;
+		if (!output) {
+			vscode.window.showErrorMessage("Create " + packedFileName + " failed.");
+			return;
 		}
-		await output.write( content );
-		await output.write( "\r\n".repeat(10) );
-		for( let md5 in imageStore) {
+		await output.write(content);
+		await output.write("\r\n".repeat(10));
+		for (let md5 in imageStore) {
 			let text = util.format("\r\n[embeded-image-%s]:\r\n%s\r\n", md5, imageStore[md5]);
-			await output.write( text );
+			await output.write(text);
 		}
 		output.close();
-		let doc = await vscode.workspace.openTextDocument(packedFileName);
-		vscode.window.showTextDocument(doc);
-		vscode.window.showInformationMessage(fileName +": " + packedFileName + " maked!");
+		let uri = vscode.Uri.file(packedFileName);
+		await vscode.commands.executeCommand('vscode.open', uri);
+		await vscode.window.showInformationMessage( packedFileName + " maked!");
 		return;
 	});
 
