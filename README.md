@@ -1,23 +1,23 @@
 # Markdown图片内嵌插件
 
 把Markdown文件里引用的本地图片文件，以Data-URI的形式内嵌到Markdown内部，方便分发。  
-图片会自动调整格式和尺寸（JPG, 80%, Width<=600px）。  
+图片会自动调整格式和尺寸（`JPG, 80%, Width<=600px`）。  
 使用该插件产生的图片Data-URI数据块可以被折叠，尽量不影响再编辑时的体验。  
 
 ## 内部
-- ** 目标图片锚点搜索 **   
+- **目标图片锚点搜索**   
   使用正则表达式 `/\!\[(.*)\]\((.+)\)/g`，在文档文本中搜索，可能会产生歧义。   
 
-- ** Data-URI生成 **  
+- **Data-URI生成**  
   Data-URI会被放到文件尾部。格式为：[embeded-image-{MD5}]: `\r\n` data:image ...   
   所以一个图片数据块由两行组成。   
 
-- ** Data-URI块折叠 **  
+- **Data-URI块折叠**  
   使用 `/\[embeded-image-\w+\]:\sdata:image\//g` 搜索文本内容，可能产生歧义。  
   折叠长度为两行。  
 
 ## 安装  
-1. 在 Releases 中下载 .vsix 包。  
+1. 在 Releases 中下载 `.vsix` 包。  
 2. 打开`vscode`并转到扩展管理，点击右上角的`···`按钮打开菜单。  
 3. 在菜单中选择`Install from VSIX...`。  
 4. 在文件框中选择下载的 .vsix 包即可。  
@@ -25,9 +25,9 @@
 ## 使用  
 1. `F1`命令面板：`Embed Images To Markdown`  
 2. 文本编辑区右键菜单，选择`Embed Images To Markdown`  
-3. 快捷键：Ctrl+Alt+E  
+3. 快捷键：`Ctrl+Alt+E`  
 
-成功后会生成 {filename}.idp.md 文件，并在窗口中打开。  
+成功后会生成 `{filename}.idp.md` 文件，并在窗口中打开。  
 
 ---
 
